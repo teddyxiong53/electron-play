@@ -1,0 +1,15 @@
+{
+  "name": "electron-helloworld",
+  "version": "1.0.0",
+  "description": "Electron Hello World 示例程序",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
+}
