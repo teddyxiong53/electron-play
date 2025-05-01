@@ -2,15 +2,45 @@ const { app, BrowserWindow, Menu, Tray, ipcMain, Notification } = require('elect
 const path = require('path')
 const os = require('os')
 
-function createWindow() {
+// 声明store变量
+let store
+
+// 初始化配置存储
+async function initStore() {
+  const Store = await import('electron-store')
+  store = new Store.default({
+    defaults: {
+      windowBounds: { width: 800, height: 600 },
+      isDarkMode: false
+    }
+  })
+}
+
+async function createWindow() {
+  const { width, height } = store.get('windowBounds')
   const win = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width,
+    height,
     backgroundColor: '#f0f0f0',
     title: 'Electron Hello World',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
     }
+  })
+
+  // 监听窗口大小变化并保存
+  win.on('resize', () => {
+    const bounds = win.getBounds()
+    store.set('windowBounds', bounds)
+  })
+
+  // 设置文件拖放处理
+  win.webContents.on('will-navigate', (event) => {
+    event.preventDefault()
+  })
+
+  win.webContents.setWindowOpenHandler(() => {
+    return { action: 'deny' }
   })
 
   win.loadFile('index.html')
@@ -55,7 +85,9 @@ function createMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // 初始化store
+  await initStore()
   // 注册获取内存信息的事件处理器
   ipcMain.handle('get-memory-info', () => {
     return {
@@ -63,6 +95,16 @@ app.whenReady().then(() => {
       free: os.freemem(),
       used: os.totalmem() - os.freemem()
     }
+  })
+
+  // 注册主题切换处理器
+  ipcMain.handle('toggle-theme', () => {
+    const isDarkMode = store.get('isDarkMode')
+    store.set('isDarkMode', !isDarkMode)
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('theme-changed', !isDarkMode)
+    })
+    return !isDarkMode
   })
 
   // 注册显示通知的事件处理器
@@ -75,46 +117,52 @@ app.whenReady().then(() => {
   const contextMenu = Menu.buildFromTemplate([
     { label: '打开控制台', type: 'normal', click: () => BrowserWindow.getFocusedWindow()?.webContents.openDevTools() },
     { type: 'separator' },
+    { label: '切换主题', type: 'normal', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('theme-changed', !store.get('isDarkMode')) },
+    { type: 'separator' },
     { label: '退出', type: 'normal', click: () => app.quit() }
   ])
   tray.setToolTip('Electron示例程序')
   tray.setContextMenu(contextMenu)
 
   createMenu()
-  const mainWindow = createWindow()
+  try {
+    const mainWindow = await createWindow()
 
-  // 监听窗口关闭事件，改为最小化到托盘
-  mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
-      event.preventDefault()
-      mainWindow.hide()
-    }
-    return false
-  })
+    // 监听窗口关闭事件，改为最小化到托盘
+    mainWindow.on('close', (event) => {
+      if (!app.isQuitting) {
+        event.preventDefault()
+        mainWindow.hide()
+      }
+      return false
+    })
 
-  // 点击托盘图标时显示窗口
-  tray.on('click', () => {
-    mainWindow.show()
-  })
+    // 点击托盘图标时显示窗口
+    tray.on('click', () => {
+      mainWindow.show()
+    })
+  } catch (error) {
+    console.error('创建窗口时发生错误:', error)
+  }
 
-  app.on('activate', () => {
+  app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMenu()
-  const mainWindow = createWindow()
+      const mainWindow = await createWindow()
 
-  // 监听窗口关闭事件，改为最小化到托盘
-  mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
-      event.preventDefault()
-      mainWindow.hide()
-    }
-    return false
-  })
+      // 监听窗口关闭事件，改为最小化到托盘
+      mainWindow.on('close', (event) => {
+        if (!app.isQuitting) {
+          event.preventDefault()
+          mainWindow.hide()
+        }
+        return false
+      })
 
-  // 点击托盘图标时显示窗口
-  tray.on('click', () => {
-    mainWindow.show()
-  })
+      // 点击托盘图标时显示窗口
+      tray.on('click', () => {
+        mainWindow.show()
+      })
     }
   })
 })

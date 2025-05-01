@@ -6,6 +6,20 @@ contextBridge.exposeInMainWorld(
   {
     getPlatform: () => process.platform,
     getMemoryInfo: () => ipcRenderer.invoke('get-memory-info'),
-    showNotification: (title, body) => ipcRenderer.send('show-notification', title, body)
+    showNotification: (title, body) => ipcRenderer.send('show-notification', title, body),
+    handleDrop: (callback) => {
+      window.addEventListener('drop', (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        const files = Array.from(event.dataTransfer.files).map(file => file.path)
+        callback(files)
+      })
+      window.addEventListener('dragover', (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      })
+    },
+    toggleTheme: () => ipcRenderer.invoke('toggle-theme'),
+    onThemeChange: (callback) => ipcRenderer.on('theme-changed', callback)
   }
 )

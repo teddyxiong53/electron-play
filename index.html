@@ -6,12 +6,28 @@
     <style>
         body {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
             background-color: #f5f5f5;
             font-family: Arial, sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+
+        body.dark-mode h1 {
+            color: #ffffff;
+        }
+
+        body.dark-mode #memoryUsage {
+            background: rgba(40, 40, 40, 0.9);
+            color: #ffffff;
         }
         h1 {
       margin-bottom: 2rem;
@@ -77,6 +93,15 @@
         <span class="icon">🔔</span>
         发送通知
       </button>
+      <button class="btn" id="themeBtn">
+        <span class="icon">🌓</span>
+        切换主题
+      </button>
+    </div>
+
+    <div id="dropZone" style="margin-top: 2rem; padding: 2rem; border: 2px dashed #3498db; border-radius: 8px; text-align: center;">
+      <p>拖放文件到这里</p>
+      <div id="fileList"></div>
     </div>
     <script>
         // 调用预加载脚本暴露的API
@@ -98,6 +123,24 @@
 
       document.getElementById('notifyBtn').addEventListener('click', () => {
         window.electronAPI.showNotification('系统通知', '来自Electron示例程序的通知内容')
+      })
+
+      // 主题切换
+      document.getElementById('themeBtn').addEventListener('click', async () => {
+        const isDarkMode = await window.electronAPI.toggleTheme()
+        document.body.classList.toggle('dark-mode', isDarkMode)
+      })
+
+      // 监听主题变化
+      window.electronAPI.onThemeChange((event, isDarkMode) => {
+        document.body.classList.toggle('dark-mode', isDarkMode)
+      })
+
+      // 文件拖放处理
+      window.electronAPI.handleDrop((files) => {
+        const fileList = document.getElementById('fileList')
+        fileList.innerHTML = '<h4>已接收的文件：</h4>' + 
+          files.map(file => `<p>${file}</p>`).join('')
       })
         })
     </script>
