@@ -14,6 +14,52 @@
             font-family: Arial, sans-serif;
         }
         h1 {
+      margin-bottom: 2rem;
+    }
+
+    .control-panel {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #2c3e50, #3498db);
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0,0,0,0.2);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .icon {
+      font-size: 1.3rem;
+    }
+
+    #memoryUsage {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: rgba(255,255,255,0.9);
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h1 {
             color: #2c3e50;
             font-size: 2.5em;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
@@ -22,10 +68,37 @@
 </head>
 <body>
     <h1>Hello Electron!</h1>
+    <div class="control-panel">
+      <button class="btn" id="memoryBtn">
+        <span class="icon">📊</span>
+        获取内存信息
+      </button>
+      <button class="btn" id="notifyBtn">
+        <span class="icon">🔔</span>
+        发送通知
+      </button>
+    </div>
     <script>
         // 调用预加载脚本暴露的API
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('h1').textContent += ` (Running on ${window.electronAPI.getPlatform()})`
+
+      document.getElementById('memoryBtn').addEventListener('click', async () => {
+        const memory = await window.electronAPI.getMemoryInfo()
+        const usage = document.createElement('div')
+        usage.id = 'memoryUsage'
+        usage.innerHTML = `
+          <h3>内存使用情况：</h3>
+          <p>总共: ${(memory.total / 1024 / 1024).toFixed(2)} MB</p>
+          <p>已用: ${(memory.used / 1024 / 1024).toFixed(2)} MB</p>
+          <p>空闲: ${(memory.free / 1024 / 1024).toFixed(2)} MB</p>
+        `
+        document.body.appendChild(usage)
+      })
+
+      document.getElementById('notifyBtn').addEventListener('click', () => {
+        window.electronAPI.showNotification('系统通知', '来自Electron示例程序的通知内容')
+      })
         })
     </script>
 </body>
