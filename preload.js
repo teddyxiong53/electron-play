@@ -20,6 +20,14 @@ contextBridge.exposeInMainWorld(
       })
     },
     toggleTheme: () => ipcRenderer.invoke('toggle-theme'),
-    onThemeChange: (callback) => ipcRenderer.on('theme-changed', callback)
+    onThemeChange: (callback) => ipcRenderer.on('theme-changed', callback),
+    // 设置相关API
+    isDarkMode: () => ipcRenderer.invoke('get-dark-mode'),
+    getWindowBounds: () => ipcRenderer.invoke('get-window-bounds'),
+    getSettings: () => ipcRenderer.invoke('get-settings'),
+    saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+    recordShortcut: () => ipcRenderer.invoke('record-shortcut'),
+    saveShortcut: (action, shortcut) => ipcRenderer.invoke('save-shortcut', action, shortcut),
+    getShortcuts: () => ipcRenderer.invoke('get-shortcuts')
   }
 )

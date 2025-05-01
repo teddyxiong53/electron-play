@@ -25,13 +25,19 @@
     "files": [
       "**/*",
       "!node_modules/**/*"
-    ]
+    ],
+    "publish": [{
+      "provider": "github",
+      "owner": "your-github-username",
+      "repo": "electron-helloworld"
+    }]
   },
   "devDependencies": {
     "electron": "^30.0.0",
     "electron-builder": "24.6.3"
   },
   "dependencies": {
-    "electron-store": "^10.0.1"
+    "electron-store": "^10.0.1",
+    "electron-updater": "^6.6.2"
   }
 }

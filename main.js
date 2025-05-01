@@ -1,6 +1,7 @@
-const { app, BrowserWindow, Menu, Tray, ipcMain, Notification } = require('electron')
+const { app, BrowserWindow, Menu, Tray, ipcMain, Notification, dialog } = require('electron')
 const path = require('path')
 const os = require('os')
+const { autoUpdater } = require('electron-updater')
 
 // 声明store变量
 let store
@@ -11,9 +12,54 @@ async function initStore() {
   store = new Store.default({
     defaults: {
       windowBounds: { width: 800, height: 600 },
-      isDarkMode: false
+      isDarkMode: false,
+      autoStart: false,
+      minimizeToTray: true,
+      shortcuts: {
+        toggleWindow: ''
+      }
     }
   })
+}
+
+// 配置自动更新
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = false
+
+  autoUpdater.on('error', (error) => {
+    dialog.showErrorBox('更新错误', error.message)
+  })
+
+  autoUpdater.on('update-available', () => {
+    dialog.showMessageBox({
+      type: 'info',
+      title: '发现新版本',
+      message: '有新版本可用，是否现在下载？',
+      buttons: ['是', '否']
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.downloadUpdate()
+      }
+    })
+  })
+
+  autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox({
+      type: 'info',
+      title: '更新就绪',
+      message: '新版本已下载完成，重启应用以完成更新。',
+      buttons: ['现在重启', '稍后重启']
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall()
+      }
+    })
+  })
+
+  // 每小时检查一次更新
+  setInterval(() => {
+    autoUpdater.checkForUpdates()
+  }, 60 * 60 * 1000)
 }
 
 async function createWindow() {
@@ -88,6 +134,9 @@ function createMenu() {
 app.whenReady().then(async () => {
   // 初始化store
   await initStore()
+  // 初始化自动更新
+  setupAutoUpdater()
+
   // 注册获取内存信息的事件处理器
   ipcMain.handle('get-memory-info', () => {
     return {
@@ -111,6 +160,58 @@ app.whenReady().then(async () => {
   ipcMain.on('show-notification', (event, title, body) => {
     new Notification({ title, body }).show()
   })
+
+  // 注册设置相关的事件处理器
+  ipcMain.handle('get-dark-mode', () => store.get('isDarkMode'))
+  ipcMain.handle('get-window-bounds', () => store.get('windowBounds'))
+  ipcMain.handle('get-settings', () => ({
+    autoStart: store.get('autoStart'),
+    minimizeToTray: store.get('minimizeToTray')
+  }))
+  ipcMain.handle('save-settings', (event, settings) => {
+    store.set('isDarkMode', settings.darkMode)
+    store.set('windowBounds', settings.windowBounds)
+    store.set('autoStart', settings.autoStart)
+    store.set('minimizeToTray', settings.minimizeToTray)
+    app.setLoginItemSettings({
+      openAtLogin: settings.autoStart
+    })
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.webContents.send('theme-changed', settings.darkMode)
+    })
+  })
+
+  // 注册快捷键相关的事件处理器
+  ipcMain.handle('record-shortcut', () => {
+    return new Promise((resolve) => {
+      const window = new BrowserWindow({
+        width: 300,
+        height: 150,
+        title: '按下快捷键',
+        modal: true,
+        parent: BrowserWindow.getFocusedWindow()
+      })
+      window.webContents.on('before-input-event', (event, input) => {
+        if (input.type === 'keyDown') {
+          const shortcut = []
+          if (input.control) shortcut.push('Ctrl')
+          if (input.meta) shortcut.push('Cmd')
+          if (input.alt) shortcut.push('Alt')
+          if (input.shift) shortcut.push('Shift')
+          if (input.key.length === 1 || input.key === 'Space') {
+            shortcut.push(input.key.toUpperCase())
+            window.close()
+            resolve(shortcut.join('+'))
+          }
+        }
+      })
+      window.loadFile('shortcut-recorder.html')
+    })
+  })
+  ipcMain.handle('save-shortcut', (event, action, shortcut) => {
+    store.set(`shortcuts.${action}`, shortcut)
+  })
+  ipcMain.handle('get-shortcuts', () => store.get('shortcuts'))
 
   // 系统托盘初始化
   const tray = new Tray(path.join(__dirname, 'icon.png'))
